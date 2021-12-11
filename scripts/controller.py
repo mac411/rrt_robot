@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 import rclpy
 from rclpy.node import Node
+from std_srvs.srv import Trigger
 
 class Controller(Node):
     def __init__(self):
         super().__init__('controller')
+        self.srvcli = self.create_client(Trigger,'obstacle_update')
         self.create_timer(0.2, self.timer_callback)
 
     def timer_callback(self):
