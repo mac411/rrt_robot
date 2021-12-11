@@ -18,6 +18,8 @@ find_package(ament_cmake_python REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(rclpy REQUIRED)
 find_package(sensor_msgs REQUIRED)
+find_package(std_srvs REQUIRED)
+find_package(numpy REQUIRED)
 
 # Include Cpp "include" directory
 # include_directories(include)
@@ -40,6 +42,7 @@ install(PROGRAMS
   scripts/controller.py
   scripts/image_processor.py
   scripts/obstacle_detector.py
+  scripts/point_cloud2.py
   DESTINATION lib/${PROJECT_NAME}
 )
 
