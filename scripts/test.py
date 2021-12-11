@@ -1,5 +1,6 @@
 import numpy as np
 import math
+from numpy.linalg import norm
 def random_config():
     r = [0, 0];
     x_dim = 10 #x size of room
@@ -43,9 +44,11 @@ tree.append(r2)
 r3 = random_config();
 r3.append(3)
 tree.append(r3)
-print(tree)
+tree = np.array(tree)
+print(np.array(tree))
+tree1 = tree[::-1]
+merge_tree = np.concatenate((tree, tree1), axis = 1)
+print(merge_tree)
 
-q_rand = random_config();
-q_near, q_rand = find_nearest(tree,q_rand);
-print(q_near)
-print(q_rand)
+#q_rand = random_config();
+#q_near, q_rand = find_nearest(tree,q_rand);
