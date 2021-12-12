@@ -19,7 +19,6 @@ find_package(rclcpp REQUIRED)
 find_package(rclpy REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(std_srvs REQUIRED)
-find_package(numpy REQUIRED)
 
 # Include Cpp "include" directory
 # include_directories(include)
