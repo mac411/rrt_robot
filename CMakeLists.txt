@@ -44,6 +44,7 @@ install(PROGRAMS
   scripts/image_processor.py
   scripts/obstacle_detector.py
   scripts/point_cloud2.py
+  scripts/rrt_controller.py
   DESTINATION lib/${PROJECT_NAME}
 )
 

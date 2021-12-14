@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-from numpy.core.numeric import roll
 import rclpy
 from rclpy.node import Node
 from sensor_msgs.msg import PointCloud2
@@ -106,34 +105,26 @@ class ObstacleDetector(Node):
         dx = goal[0] - current_pos.x
         dy = goal[1] - current_pos.y
         dtheta = atan2(dy,dx)
-        diff = self.euler_from_quaternion(current_ori)[2] - dtheta
-        if abs(d2r(normalize(r2d(diff),-180,180))) > 0.08:
+        diff = d2r(normalize(r2d(self.euler_from_quaternion(current_ori)[2] - dtheta),-180,180))
+        if abs(diff) > 0.08:
             cmd.linear.x = 0.0
-            if dtheta >= 0.0:
+            if diff >= 0.0:
                 cmd.angular.z = -ang_vel_max
             else:
                 cmd.angular.z = ang_vel_max
-        elif abs(current_pos.x - goal[0]) > 0.4 or abs(current_pos.y - goal[1]) > 0.4:
+        elif sqrt((current_pos.x - goal[0])**2 + (current_pos.y - goal[1])**2) > 0.8:
             cmd.linear.x = lin_vel_max
             cmd.angular.z = 0.0
         else:
             cmd.linear.x = 0.0
             cmd.angular.z = 0.0
-        # goal_ang = atan2(goal[1],goal[0])
-        # dtheta = d2r(normalize(r2d(goal_ang - self.euler_from_quaternion(current_ori)[2]),-180,180)) # Normalize this?
-        # if abs(dtheta) > 0.08:
-        #     cmd.linear.x = 0.0
-        #     if dtheta >= 0:
-        #         cmd.angular.z = ang_vel_max
-        #     else:
-        #         cmd.angular.z = -ang_vel_max
         return cmd
         
 
 def main(args=None):
     rclpy.init(args=args)
     obstacle_detector = ObstacleDetector()
-    goal = np.array([-10,10])
+    goal = np.array([6,-10])
     cmd = Twist()
     while rclpy.ok():
         # if abs(obstacle_detector.position.x - goal[0]) > 0.4 or abs(obstacle_detector.position.y - goal[1]) > 0.4:
