@@ -83,14 +83,14 @@ class RRTController(Node):
     def travel_to_goal(self,goal):
         current_pos = self.position
         current_ori = self.orientation
-        lin_vel_max = 0.4
-        ang_vel_max = 0.2
+        lin_vel_max = 0.5
+        ang_vel_max = 0.4
         cmd = Twist()
         dx = goal[0] - current_pos.x
         dy = goal[1] - current_pos.y
         dtheta = atan2(dy,dx)
         diff = d2r(normalize(r2d(self.euler_from_quaternion(current_ori)[2] - dtheta),-180,180))
-        if abs(diff) > 0.08:
+        if abs(diff) > 0.1:
             cmd.linear.x = 0.0
             if diff >= 0.0:
                 cmd.angular.z = -ang_vel_max
@@ -109,11 +109,19 @@ class RRTController(Node):
         tb = ta1
         return ta, tb
 
+    # def random_config(self):
+    #     r = np.zeros(2)
+    #     x_dim = 50
+    #     y_dim = 50
+    #     r[0] = x_dim*np.random.random_sample() - (x_dim/2)
+    #     r[1] = y_dim*np.random.random_sample() - (y_dim/2)
+    #     return r
+
     def random_config(self):
         r = np.zeros(2)
         x_dim = 50
         y_dim = 50
-        r[0] = x_dim*np.random.random_sample() - (x_dim/2)
+        r[0] = x_dim*np.random.random_sample()/2
         r[1] = y_dim*np.random.random_sample() - (y_dim/2)
         return r
 
@@ -123,7 +131,7 @@ class RRTController(Node):
         #     return collision
         # else:
         angle = np.linspace(0,2*np.pi,36)
-        radius = 2
+        radius = 1
         x_pos = q[0]
         y_pos = q[1]
         x = radius * np.cos(angle) + x_pos
@@ -204,10 +212,12 @@ class RRTController(Node):
         result = self.local_planner(q_near, q_int, step_size, obstacle)
         if result == True:
             tree1 = np.vstack((tree1,q_int))
+            # print(tree1)
             q_target = q_int
         return result, tree1, q_target
 
     def rrt_extend_multiple(self, tree2, q_target, step_length, step_size, obstacle):
+        q_connect = np.zeros(3,)
         q_near, q_target = self.find_nearest(tree2, q_target[0:2])
         q_int = self.limit(q_target,q_near,step_length)
         q_last = q_near[0:2]
@@ -219,6 +229,7 @@ class RRTController(Node):
                 return result, tree2, q_connect
             q_int = np.append(q_int,last_ind)
             tree2 = np.vstack((tree2,q_int))
+            # print(tree2)
             last_ind = len(tree2)-1
             q_connect = q_int
             if i < num_steps:
@@ -229,10 +240,12 @@ class RRTController(Node):
     def rrt_connect(self,q_start,q_goal,step_length,step_size,obstacle):
         tree1 = np.array(q_start)
         tree1 = np.append(tree1,0)
+        # print(tree1)
         tree2 = np.array(q_goal)
         tree2 = np.append(tree2,0)
+        # print(tree2)
         success = False
-        for _ in range(0,1000):
+        for _ in range(0,10000):
             q_rand = self.random_config()
             result, tree1, q_target = self.rrt_extend_single(tree1,q_rand,step_length,step_size,obstacle)
             if result == True:
@@ -287,10 +300,16 @@ class RRTController(Node):
     #         current_pos = tree1[i]
     #     return collision, current_pos, obstacle #False, path completed successfully.
 
-    def get_path(self,tree1,tree2,q_connect):
+    def get_path(self,tree1,tree2,q_connect,goal):
         # print(self.findpath(tree1,q_connect))
+        if tree1[0,0] == goal[0] and tree1[0,1] == goal[1]:
+            tree1, tree2 = self.swap(tree1,tree2)
         path1 = np.flip(self.findpath(tree1,q_connect,1))
+        print(path1)
+        print(tree1)
         path2 = self.findpath(tree2,q_connect,2)
+        print(path2)
+        print(tree2)
         path = None
         for i in path1:
             if path is None:
@@ -332,14 +351,14 @@ def main(args=None):
     in_motion = False
 
     # wait until all initialized?
-    start = np.array([8.14,-3.82])
-    goal = np.array([-5,14]) # get this somehow
-    step_length = 1.5
+    start = np.array([0.0,0.0])
+    goal = np.array([20,7]) # get this somehow
+    step_length = 1.2
     step_size = 0.3
     obstacle = np.zeros((50, 50), dtype=np.bool)
     # generate initial plan
     path_found, q_connect, tree1, tree2 = rrt_controller.rrt_connect(start,goal,step_length,step_size,obstacle)
-    path = rrt_controller.get_path(tree1,tree2,q_connect)
+    path = rrt_controller.get_path(tree1,tree2,q_connect,goal)
     current_pos_idx = 1
     print(path)
     
@@ -360,9 +379,9 @@ def main(args=None):
                 if not at_goal:
                     # check obstruction with local planner
                     obstacle = rrt_controller.occ_grid
-                    path_unobstructed = rrt_controller.local_planner(path[current_pos_idx],path[current_pos_idx+1],step_size,obstacle)
+                    path_unobstructed = (rrt_controller.local_planner(path[current_pos_idx],path[current_pos_idx+1],step_size,obstacle))
                     if path_unobstructed:
-                        print('going in motion')
+                        print(f'going in motion to {path[current_pos_idx]}')
                         # do motion
                         in_motion = True
                     else:
@@ -371,8 +390,9 @@ def main(args=None):
                         start = path[current_pos_idx]
                         path_found, q_connect, tree1, tree2 = rrt_controller.rrt_connect(start,goal,step_length,step_size,obstacle)
                         if path_found:
-                            path = rrt_controller.get_path(tree1,tree2,q_connect)
-                            current_pos_idx = 0
+                            path = rrt_controller.get_path(tree1,tree2,q_connect,goal)
+                            current_pos_idx = 1
+                            print(path)
             else:
                 print('failure')
                 failure_counter = failure_counter + 1
@@ -380,8 +400,9 @@ def main(args=None):
                     break
                 path_found, q_connect, tree1, tree2 = rrt_controller.rrt_connect(start,goal,step_length,step_size,obstacle)
                 if path_found:
-                    path = rrt_controller.get_path(tree1,tree2,q_connect)
-                    current_pos_idx = 0
+                    path = rrt_controller.get_path(tree1,tree2,q_connect,goal)
+                    current_pos_idx = 1
+                    print(path)
         rclpy.spin_once(rrt_controller)
     rclpy.shutdown()
 
